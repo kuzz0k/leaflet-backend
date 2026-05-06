@@ -1,42 +1,38 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-
-	_ "leaflet-back/docs" // Этот импорт необходим для swag
+	"leaflet-back/internal/config"
 	"leaflet-back/internal/handlers"
-	httpSwagger "github.com/swaggo/http-swagger"
+	"leaflet-back/internal/services"
+	"log/slog"
+	"net/http"
+	"os"
 )
 
-// @title Leaflet Tile Server API
-// @version 1.0
-// @description Это сервер для раздачи тайлов карт и управления ими.
-// @host localhost:8080
-// @BasePath /
 func main() {
-	// Создаем новый маршрутизатор
-	mux := http.NewServeMux()
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	log.Info("Logger initialized")
 
-	// Регистрируем обработчики
-	mux.HandleFunc("/maps/info", handlers.GetMapInfo)
-	mux.HandleFunc("/upload", handlers.UploadMap)
-	mux.HandleFunc("/tiles/", handlers.GetTile) // Обратите внимание на слеш в конце
+	cfg := config.MustLoad()
+	log.Info("Config loaded", slog.String("env", cfg.Env))
 
-	// Обработчик для Swagger UI
-	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	mbtilesService := services.NewMbtilesService(cfg.StoragePath)
+	log.Info("Services initialized")
 
-	// Приветственное сообщение
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to the tile server! Visit /swagger/index.html for API documentation.")
-	})
+	handler := handlers.NewHandler(mbtilesService)
+	log.Info("Handlers initialized")
 
-	fmt.Println("Starting server on :8080")
-	fmt.Println("Swagger UI is available at http://localhost:8080/swagger/index.html")
-	
-	// Запускаем сервер с нашим маршрутизатором
-	if err := http.ListenAndServe(":8080", mux); err != nil {
-		log.Fatal(err)
+	log.Info("Starting server", slog.String("address", cfg.Address))
+
+	server := &http.Server{
+		Addr:         cfg.Address,
+		Handler:      handler.InitRoutes(),
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
+		log.Error("Failed to start server", "error", err)
 	}
 }
