@@ -21,21 +21,21 @@ import (
 // @Failure      500      {object}  map[string]string "Внутренняя ошибка сервера"
 // @Router       /tiles/{map_name}/{z}/{x}/{y}.png [get]
 func (h *Handler) GetTile(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) != 5 {
-		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+	// Path should be /api/tiles/{map_name}/{z}/{x}/{y}.jpg
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/tiles/"), "/")
+	if len(parts) != 4 {
+		http.Error(w, "Invalid URL format. Expected /api/tiles/{map_name}/{z}/{x}/{y}.jpg", http.StatusBadRequest)
 		return
 	}
 
-	mapName := parts[1]
-	z, errZ := strconv.Atoi(parts[2])
-	x, errX := strconv.Atoi(parts[3])
-
-	yStr := strings.TrimSuffix(parts[4], ".png")
+	mapName := parts[0]
+	z, errZ := strconv.Atoi(parts[1])
+	x, errX := strconv.Atoi(parts[2])
+	yStr := strings.TrimSuffix(parts[3], ".jpg")
 	y, errY := strconv.Atoi(yStr)
 
 	if errZ != nil || errX != nil || errY != nil {
-		http.Error(w, "Invalid coordinates", http.StatusBadRequest)
+		http.Error(w, "Invalid coordinates in URL", http.StatusBadRequest)
 		return
 	}
 
@@ -46,6 +46,7 @@ func (h *Handler) GetTile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Content-Length", strconv.Itoa(len(tileData)))
 	w.Write(tileData)
 }

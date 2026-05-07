@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type MbtilesService struct {
@@ -13,19 +13,19 @@ type MbtilesService struct {
 }
 
 func NewMbtilesService(storagePath string) *MbtilesService {
-	return &MbtilesService{storagePath: storagePath}
+	return &MbtilesService{
+		storagePath: storagePath,
+	}
 }
 
 func (s *MbtilesService) GetTileData(mapName string, z, x, y int) ([]byte, error) {
 	dbPath := filepath.Join(s.storagePath, fmt.Sprintf("%s.mbtiles", mapName))
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open mbtiles file: %w", err)
 	}
 	defer db.Close()
-
-	y = (1 << z) - 1 - y
 
 	var tileData []byte
 	query := "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?"

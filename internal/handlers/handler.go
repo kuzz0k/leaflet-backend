@@ -17,6 +17,6 @@ func NewHandler(mbtilesService *services.MbtilesService) *Handler {
 
 func (h *Handler) InitRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/tiles/", h.GetTile)
+	mux.HandleFunc("/api/tiles/", h.GetTile)
 	return mux
 }
